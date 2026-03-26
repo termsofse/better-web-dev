@@ -1,693 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WebDev Studio</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0f1117;--sidebar:#14161f;--bar:#181a2a;--border:rgba(255,255,255,.08);
-  --text:#cdd6f4;--muted:#6c7086;--accent:#89b4fa;--red:#f38ba8;--yellow:#f9e2af;
-  --green:#a6e3a1;--purple:#cba6f7;--teal:#94e2d5;--orange:#fab387;
-  --hover:rgba(255,255,255,.06);--active:rgba(137,180,250,.12);
-}
-html,body{height:100%;overflow:hidden;font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text)}
-/* Layout */
-#app{display:flex;flex-direction:column;height:100vh}
-#topbar{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bar);border-bottom:1px solid var(--border);flex-shrink:0;min-height:40px}
-#main{display:flex;flex:1;overflow:hidden}
-#sidebar{width:220px;flex-shrink:0;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
-#sidebar.hidden{width:0;overflow:hidden}
-#editor-pane{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
-#preview-pane{width:42%;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-#preview-pane.hidden{display:none}
-/* Topbar */
-.dots{display:flex;gap:5px;align-items:center;margin-right:8px}
-.dot{width:11px;height:11px;border-radius:50%}
-.dot.r{background:#f38ba8}.dot.y{background:#f9e2af}.dot.g{background:#a6e3a1}
-.title{font-size:12px;color:var(--muted);margin-right:auto}
-.tbtn{display:flex;align-items:center;gap:5px;padding:4px 10px;border:none;background:transparent;color:#aaa;font-size:11px;cursor:pointer;border-radius:6px;transition:background .15s,color .15s}
-.tbtn:hover{background:var(--hover);color:var(--text)}
-.tbtn.active{background:var(--active);color:var(--accent)}
-.tbtn.primary{background:#1e66f5;color:white}
-.tbtn.primary:hover{background:#2776ff}
-.sep{width:1px;height:16px;background:var(--border);margin:0 4px}
-/* Sidebar */
-#sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
-#sidebar-header span{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.sh-btns{display:flex;gap:2px}
-.sh-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:3px;border-radius:4px;display:flex;align-items:center}
-.sh-btn:hover{background:var(--hover);color:var(--text)}
-#file-tree{flex:1;overflow-y:auto;padding:4px;font-size:12px}
-#file-tree::-webkit-scrollbar{width:4px}
-#file-tree::-webkit-scrollbar-track{background:transparent}
-#file-tree::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.tree-node{user-select:none}
-.node-row{display:flex;align-items:center;gap:3px;padding:2px 4px;border-radius:5px;cursor:pointer;position:relative;min-height:22px}
-.node-row:hover{background:var(--hover)}
-.node-row.active{background:var(--active);color:var(--accent)}
-.node-row.selected{outline:1px solid rgba(137,180,250,.4);background:rgba(137,180,250,.08)}
-.node-row.dragover{background:rgba(137,180,250,.25);outline:1px solid var(--accent)}
-.node-icon{font-size:13px;flex-shrink:0;width:16px;text-align:center}
-.node-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px}
-.node-actions{display:none;gap:2px;margin-left:auto;flex-shrink:0}
-.node-row:hover .node-actions{display:flex}
-.na-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:1px 2px;border-radius:3px;font-size:10px;display:flex;align-items:center}
-.na-btn:hover{color:var(--text);background:var(--hover)}
-.na-btn.del:hover{color:var(--red)}
-.rename-input{background:#2a2d3e;color:var(--text);border:1px solid var(--accent);border-radius:3px;font-size:11px;padding:1px 4px;width:100%;outline:none}
-.node-children{padding-left:14px}
-.checkbox{width:11px;height:11px;border:1px solid var(--muted);border-radius:2px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;opacity:0}
-.node-row:hover .checkbox{opacity:1}
-.node-row.selected .checkbox{opacity:1;background:var(--accent);border-color:var(--accent);color:var(--bar)}
-/* Editor */
-#editor-header{display:flex;align-items:center;padding:4px 12px;background:var(--bar);border-bottom:1px solid var(--border);flex-shrink:0;gap:8px;min-height:30px}
-#editor-filename{font-size:11px;color:var(--text);font-family:monospace}
-#editor-lang{font-size:10px;color:var(--muted);margin-left:auto;text-transform:uppercase}
-#editor-wrap{flex:1;display:flex;overflow:hidden;position:relative;background:#1e2030}
-#line-nums{width:44px;flex-shrink:0;background:#181a2a;border-right:1px solid var(--border);overflow:hidden;padding:12px 0;font-family:monospace;font-size:12px;line-height:20px;color:var(--muted);text-align:right;pointer-events:none}
-.lnum{padding-right:8px}
-#code-editor{flex:1;resize:none;border:none;outline:none;background:transparent;color:var(--text);font-family:'Fira Code','Cascadia Code','Consolas',monospace;font-size:12px;line-height:20px;padding:12px 14px;tab-size:2;white-space:pre;overflow:auto;caret-color:#fff}
-#empty-editor{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);flex-direction:column;gap:8px}
-#empty-editor .big{font-size:48px;opacity:.2}
-/* Preview */
-#preview-header{display:flex;align-items:center;padding:4px 10px;background:var(--bar);border-bottom:1px solid var(--border);flex-shrink:0;gap:6px;min-height:30px}
-#preview-header span{font-size:11px;color:var(--muted)}
-#preview-frame{flex:1;border:none;background:white}
-/* Context menu */
-#ctx-menu{position:fixed;background:#1e2030;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:1000;padding:4px;min-width:160px;display:none;font-size:12px}
-#ctx-menu.show{display:block}
-.ctx-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;cursor:pointer;color:var(--text)}
-.ctx-item:hover{background:var(--hover)}
-.ctx-item.danger{color:var(--red)}
-.ctx-item.danger:hover{background:rgba(243,139,168,.1)}
-.ctx-sep{height:1px;background:var(--border);margin:3px 0}
-/* Full preview */
-#full-preview{display:none;position:fixed;inset:0;z-index:500;flex-direction:column;background:#000}
-#full-preview.show{display:flex}
-#full-preview-bar{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bar);border-bottom:1px solid var(--border)}
-#full-preview-frame{flex:1;border:none;background:white}
-/* Scrollbar */
-#code-editor::-webkit-scrollbar{width:6px;height:6px}
-#code-editor::-webkit-scrollbar-track{background:transparent}
-#code-editor::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-/* SVG icons inline */
-.icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Projects - WebDev Studio</title>
+    <style>
+        :root {
+            --bg: #0f1117; --card: #14161f; --border: rgba(255,255,255,0.1);
+            --text: #cdd6f4; --accent: #89b4fa; --btn: #1e66f5;
+        }
+        body { 
+            background: var(--bg); color: var(--text); 
+            font-family: 'Segoe UI', sans-serif; padding: 40px; 
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        
+        .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .project-card { 
+            background: var(--card); border: 1px solid var(--border); 
+            padding: 20px; border-radius: 12px; cursor: pointer; transition: 0.2s;
+            text-decoration: none; color: inherit;
+        }
+        .project-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        
+        button { 
+            background: var(--btn); color: white; border: none; 
+            padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+        #login-screen { text-align: center; margin-top: 100px; }
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
-<div id="app">
-  <div id="topbar">
-    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
-    <span class="title">WebDev Studio</span>
-    <input type="file" id="upload-files" multiple style="display:none">
-    <input type="file" id="upload-folder" webkitdirectory style="display:none">
-    <button class="tbtn" onclick="document.getElementById('upload-files').click()">&#x2191; Files</button>
-    <button class="tbtn" onclick="document.getElementById('upload-folder').click()">&#x1F4C1; Folder</button>
-    <div class="sep"></div>
-    <button class="tbtn" id="btn-sidebar" onclick="toggleSidebar()">&#x2261; Sidebar</button>
-    <button class="tbtn" id="btn-preview" onclick="togglePreview()">&#x25A3; Preview</button>
-    <button class="tbtn" onclick="openFullPreview()" title="Full page preview">&#x26F6; Full Preview</button>
-    <div class="sep"></div>
-    <button class="tbtn primary" onclick="exportZip()">&#x2193; Export ZIP</button>
-  </div>
-  <div id="main">
-    <div id="sidebar">
-      <div id="sidebar-header">
-        <span>Explorer</span>
-        <div class="sh-btns">
-          <button class="sh-btn" onclick="createFile(null)" title="New file">&#43;</button>
-          <button class="sh-btn" onclick="createFolder(null)" title="New folder">&#x1F4C2;</button>
+
+<div id="login-screen">
+    <h1>WebDev Studio</h1>
+    <p>Sign in to manage your cloud projects</p>
+    <button id="btn-login">Sign in with Google</button>
+</div>
+
+<div id="dashboard" class="hidden">
+    <div class="container">
+        <div class="header">
+            <h1>My Projects</h1>
+            <div style="display:flex; gap: 10px;">
+                <button onclick="createNewProject()">+ New Project</button>
+                <button id="btn-logout" style="background:transparent; border: 1px solid var(--border)">Logout</button>
+            </div>
         </div>
-      </div>
-      <div id="file-tree"></div>
+        <div id="project-list" class="project-grid">
+            </div>
     </div>
-    <div id="editor-pane">
-      <div id="editor-header">
-        <span id="editor-filename" style="color:var(--muted)">No file selected</span>
-        <span id="editor-lang"></span>
-      </div>
-      <div id="editor-wrap">
-        <div id="empty-editor"><div class="big">&lt;/&gt;</div><div>Select a file to edit</div></div>
-        <div id="line-nums" style="display:none"></div>
-        <textarea id="code-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" style="display:none"></textarea>
-      </div>
-    </div>
-    <div id="preview-pane">
-      <div id="preview-header">
-        <span>Preview</span>
-        <button class="tbtn" onclick="refreshPreview()" style="margin-left:auto;padding:2px 6px">&#x21BB;</button>
-      </div>
-      <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
-    </div>
-  </div>
 </div>
 
-<div id="ctx-menu"></div>
-
-<div id="full-preview">
-  <div id="full-preview-bar">
-    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
-    <span style="font-size:13px;color:var(--muted)">Full Preview</span>
-    <button class="tbtn" onclick="closeFullPreview()" style="margin-left:auto">&#x2715; Close</button>
-  </div>
-  <iframe id="full-preview-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
-</div>
-
-<script>
-// ============================================================
-// STATE
-// ============================================================
-let nodes = [
-  { id:'f1', name:'index.html', type:'file', content:`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>My Project</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="container">
-    <h1>Hello, World!</h1>
-    <p>Edit the files on the left to get started.</p>
-    <button onclick="greet()">Click me</button>
-  </div>
-  <script src="script.js"><\/script>
-</body>
-</html>` },
-  { id:'f2', name:'style.css', type:'file', content:`* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.container {
-  background: white;
-  border-radius: 16px;
-  padding: 3rem;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,.3);
-}
-h1 { font-size: 2.5rem; color: #333; margin-bottom: 1rem; }
-p { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
-button {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white; border: none;
-  padding: .8rem 2rem; border-radius: 8px;
-  font-size: 1rem; cursor: pointer;
-  transition: transform .2s, box-shadow .2s;
-}
-button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,.4); }` },
-  { id:'f3', name:'script.js', type:'file', content:`function greet() {
-  const names = ['World','Developer','Coder','Creator'];
-  const name = names[Math.floor(Math.random() * names.length)];
-  document.querySelector('h1').textContent = \`Hello, \${name}!\`;
-}` }
-];
-
-let activeId = 'f1';
-let selectedIds = new Set();
-let expanded = {};
-let renamingId = null;
-let dragId = null;
-let ctxNode = null;
-
-function uid() { return Math.random().toString(36).slice(2,10); }
-
-// ============================================================
-// FIND / TREE UTILS
-// ============================================================
-function findNode(id, arr) {
-  for (const n of arr) {
-    if (n.id === id) return n;
-    if (n.type === 'folder') { const f = findNode(id, n.children||[]); if(f) return f; }
-  }
-  return null;
-}
-function findParentArr(id, arr) {
-  if (arr.some(n=>n.id===id)) return arr;
-  for (const n of arr) {
-    if (n.type==='folder') { const f = findParentArr(id, n.children||[]); if(f) return f; }
-  }
-  return null;
-}
-function removeNode(id, arr) {
-  return arr.filter(n=>n.id!==id).map(n=>n.type==='folder'?{...n,children:removeNode(id,n.children||[])}:n);
-}
-function insertInto(parentId, newNode, arr) {
-  if (!parentId) return [...arr, newNode];
-  return arr.map(n=>{
-    if(n.id===parentId&&n.type==='folder') return {...n,children:[...(n.children||[]),newNode]};
-    if(n.type==='folder') return {...n,children:insertInto(parentId,newNode,n.children||[])};
-    return n;
-  });
-}
-function updateNodeProp(id, props, arr) {
-  return arr.map(n=>{
-    if(n.id===id) return {...n,...props};
-    if(n.type==='folder') return {...n,children:updateNodeProp(id,props,n.children||[])};
-    return n;
-  });
-}
-function getAllFiles(arr, prefix='') {
-  const out=[];
-  for(const n of arr){
-    const p=prefix?prefix+'/'+n.name:n.name;
-    if(n.type==='file') out.push({path:p,content:n.content||''});
-    else out.push(...getAllFiles(n.children||[],p));
-  }
-  return out;
-}
-function getNodeFiles(node, prefix='') {
-  if(node.type==='file') return [{path:prefix||node.name, content:node.content||''}];
-  const out=[];
-  for(const c of node.children||[]) {
-    const p=(prefix||node.name)+'/'+c.name;
-    if(c.type==='file') out.push({path:p,content:c.content||''});
-    else out.push(...getNodeFiles(c, p));
-  }
-  return out;
-}
-function deepClone(node) {
-  const c = JSON.parse(JSON.stringify(node));
-  function reId(n){ n.id=uid(); if(n.children) n.children.forEach(reId); }
-  reId(c); return c;
-}
-
-// ============================================================
-// RENDER TREE
-// ============================================================
-function renderTree() {
-  document.getElementById('file-tree').innerHTML = renderNodes(nodes, 0);
-  bindNodeEvents();
-}
-function renderNodes(arr, depth) {
-  return arr.map(n=>renderNode(n,depth)).join('');
-}
-function renderNode(n, depth) {
-  const isActive = n.id===activeId;
-  const isSel = selectedIds.has(n.id);
-  const isOver = false;
-  const icon = n.type==='folder' ? (expanded[n.id]?'📂':'📁') : fileIcon(n.name);
-  const cls = ['node-row', isActive?'active':'', isSel?'selected':''].filter(Boolean).join(' ');
-  const style = `padding-left:${depth*14+4}px`;
-  const children = n.type==='folder'&&expanded[n.id] ? `<div class="node-children">${renderNodes(n.children||[],depth+1)}</div>`:'';
-  const chk = `<div class="checkbox" data-id="${n.id}" onclick="toggleSelect(event,'${n.id}')">${isSel?'✓':''}</div>`;
-  const renaming = renamingId===n.id;
-  const nameEl = renaming
-    ? `<input class="rename-input" id="ri-${n.id}" value="${escHtml(n.name)}" data-id="${n.id}">`
-    : `<span class="node-name">${escHtml(n.name)}</span>`;
-  const actions = renaming ? '' : `<div class="node-actions">
-    ${n.type==='folder'?'<button class="na-btn" data-action="newfile" data-id="'+n.id+'" title="New file">+</button><button class="na-btn" data-action="newfolder" data-id="'+n.id+'" title="New folder">📁</button>':''}
-    <button class="na-btn" data-action="rename" data-id="${n.id}" title="Rename">✎</button>
-    <button class="na-btn del" data-action="delete" data-id="${n.id}" title="Delete">✕</button>
-  </div>`;
-  return `<div class="tree-node" data-id="${n.id}">
-    <div class="${cls}" style="${style}" data-id="${n.id}" data-type="${n.type}"
-      draggable="true" ondragstart="onDragStart(event,'${n.id}')"
-      ondragover="onDragOver(event,'${n.id}')" ondragleave="onDragLeave(event)"
-      ondrop="onDrop(event,'${n.id}')"
-      onclick="nodeClick(event,'${n.id}','${n.type}')"
-      oncontextmenu="nodeCtx(event,'${n.id}')">
-      ${chk}
-      <span class="node-icon">${icon}</span>
-      ${nameEl}
-      ${actions}
-    </div>
-    ${children}
-  </div>`;
-}
-function fileIcon(name) {
-  const ext=(name.split('.').pop()||'').toLowerCase();
-  const m={html:'🌐',htm:'🌐',css:'🎨',js:'⚡',ts:'🔷',jsx:'⚛',tsx:'⚛',json:'📋',md:'📝',svg:'🖼',png:'🖼',jpg:'🖼',jpeg:'🖼',gif:'🖼'};
-  return m[ext]||'📄';
-}
-function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function bindNodeEvents() {
-  // Rename inputs
-  document.querySelectorAll('.rename-input').forEach(inp=>{
-    inp.focus(); inp.select();
-    inp.addEventListener('blur',()=>commitRename(inp));
-    inp.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){commitRename(inp);}
-      if(e.key==='Escape'){renamingId=null;renderTree();}
-    });
-    inp.addEventListener('click',e=>e.stopPropagation());
-  });
-}
-
-// ============================================================
-// NODE ACTIONS
-// ============================================================
-function nodeClick(e, id, type) {
-  if(renamingId) return;
-  if(type==='folder'){expanded[id]=!expanded[id]; renderTree();}
-  else { activeId=id; openFile(id); renderTree(); }
-}
-function toggleSelect(e, id) {
-  e.stopPropagation();
-  if(selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
-  renderTree();
-}
-function openFile(id) {
-  const f=findNode(id,nodes);
-  if(!f||f.type!=='file') return;
-  const ed=document.getElementById('code-editor');
-  const empty=document.getElementById('empty-editor');
-  const ln=document.getElementById('line-nums');
-  const fn=document.getElementById('editor-filename');
-  const lang=document.getElementById('editor-lang');
-  empty.style.display='none';
-  ed.style.display='block';
-  ln.style.display='block';
-  ed.value=f.content||'';
-  fn.textContent=f.name;
-  lang.textContent=(f.name.split('.').pop()||'').toUpperCase();
-  updateLineNums();
-  refreshPreview();
-}
-function updateLineNums() {
-  const ed=document.getElementById('code-editor');
-  const ln=document.getElementById('line-nums');
-  const lines=(ed.value.match(/\n/g)||[]).length+1;
-  ln.innerHTML=Array.from({length:lines},(_,i)=>`<div class="lnum">${i+1}</div>`).join('');
-  ln.scrollTop=ed.scrollTop;
-}
-
-// Editor change
-document.getElementById('code-editor').addEventListener('input',function(){
-  if(!activeId) return;
-  nodes=updateNodeProp(activeId,{content:this.value},nodes);
-  updateLineNums();
-  refreshPreview();
-});
-document.getElementById('code-editor').addEventListener('scroll',function(){
-  document.getElementById('line-nums').scrollTop=this.scrollTop;
-});
-document.getElementById('code-editor').addEventListener('keydown',function(e){
-  if(e.key==='Tab'){
-    e.preventDefault();
-    const s=this.selectionStart,end=this.selectionEnd;
-    this.value=this.value.substring(0,s)+'  '+this.value.substring(end);
-    this.selectionStart=this.selectionEnd=s+2;
-    if(activeId) nodes=updateNodeProp(activeId,{content:this.value},nodes);
-    updateLineNums();
-  }
-});
-
-// ============================================================
-// CREATE / DELETE / RENAME / DUPLICATE
-// ============================================================
-function createFile(parentId) {
-  const n={id:uid(),name:'untitled.html',type:'file',content:''};
-  nodes=insertInto(parentId,n,nodes);
-  if(parentId) expanded[parentId]=true;
-  renamingId=n.id; activeId=n.id;
-  renderTree();
-  refreshPreview();
-}
-function createFolder(parentId) {
-  const n={id:uid(),name:'new-folder',type:'folder',children:[]};
-  nodes=insertInto(parentId,n,nodes);
-  if(parentId) expanded[parentId]=true;
-  expanded[n.id]=true; renamingId=n.id;
-  renderTree();
-}
-function commitRename(inp) {
-  const id=inp.dataset.id;
-  const val=inp.value.trim();
-  if(val) nodes=updateNodeProp(id,{name:val},nodes);
-  renamingId=null; renderTree();
-  if(id===activeId&&val) document.getElementById('editor-filename').textContent=val;
-}
-function deleteNode(id) {
-  if(id===activeId){ activeId=null; showEmpty(); }
-  selectedIds.delete(id);
-  nodes=removeNode(id,nodes);
-  renderTree(); refreshPreview();
-}
-function showEmpty() {
-  document.getElementById('empty-editor').style.display='flex';
-  document.getElementById('code-editor').style.display='none';
-  document.getElementById('line-nums').style.display='none';
-  document.getElementById('editor-filename').textContent='No file selected';
-  document.getElementById('editor-lang').textContent='';
-}
-function duplicateNode(id) {
-  const original=findNode(id,nodes);
-  if(!original) return;
-  const clone=deepClone(original);
-  clone.name=original.name.includes('.')?original.name.replace(/(\.[^.]+)$/,' copy$1'):original.name+' copy';
-  const parentArr=findParentArr(id,nodes);
-  if(parentArr===nodes){
-    const idx=nodes.findIndex(n=>n.id===id);
-    nodes=[...nodes.slice(0,idx+1),clone,...nodes.slice(idx+1)];
-  } else {
-    const idx=parentArr.findIndex(n=>n.id===id);
-    parentArr.splice(idx+1,0,clone);
-    nodes=[...nodes];
-  }
-  renderTree();
-}
-function startRename(id) {
-  renamingId=id; renderTree();
-}
-
-// ============================================================
-// ACTION BUTTONS in node rows (delegated)
-// ============================================================
-document.getElementById('file-tree').addEventListener('click',function(e){
-  const btn=e.target.closest('[data-action]');
-  if(!btn) return;
-  e.stopPropagation();
-  const id=btn.dataset.id;
-  const action=btn.dataset.action;
-  if(action==='newfile') createFile(id);
-  else if(action==='newfolder') createFolder(id);
-  else if(action==='rename') startRename(id);
-  else if(action==='delete') deleteNode(id);
-});
-
-// ============================================================
-// CONTEXT MENU
-// ============================================================
-function nodeCtx(e, id) {
-  e.preventDefault(); ctxNode=findNode(id,nodes);
-  const menu=document.getElementById('ctx-menu');
-  const items=[];
-  if(ctxNode.type==='folder'){
-    items.push(`<div class="ctx-item" onclick="createFile('${id}');hideCtx()">+ New File</div>`);
-    items.push(`<div class="ctx-item" onclick="createFolder('${id}');hideCtx()">📁 New Folder</div>`);
-    items.push('<div class="ctx-sep"></div>');
-  }
-  items.push(`<div class="ctx-item" onclick="startRename('${id}');hideCtx()">✎ Rename</div>`);
-  items.push(`<div class="ctx-item" onclick="duplicateNode('${id}');hideCtx()">⧉ Duplicate</div>`);
-  items.push(`<div class="ctx-item" onclick="downloadNode('${id}');hideCtx()">↓ Download</div>`);
-  items.push('<div class="ctx-sep"></div>');
-  items.push(`<div class="ctx-item danger" onclick="deleteNode('${id}');hideCtx()">✕ Delete</div>`);
-  menu.innerHTML=items.join('');
-  menu.style.left=e.clientX+'px'; menu.style.top=e.clientY+'px';
-  menu.classList.add('show');
-}
-function hideCtx(){ document.getElementById('ctx-menu').classList.remove('show'); }
-document.addEventListener('click',hideCtx);
-
-// ============================================================
-// DRAG & DROP
-// ============================================================
-function onDragStart(e,id){ dragId=id; e.dataTransfer.effectAllowed='move'; }
-function onDragOver(e,id){
-  e.preventDefault(); e.stopPropagation();
-  const n=findNode(id,nodes);
-  if(n&&n.type==='folder'){ e.currentTarget.classList.add('dragover'); }
-}
-function onDragLeave(e){ e.currentTarget.classList.remove('dragover'); }
-function onDrop(e,targetId){
-  e.preventDefault(); e.stopPropagation();
-  e.currentTarget.classList.remove('dragover');
-  if(!dragId||dragId===targetId) return;
-  const target=findNode(targetId,nodes);
-  if(!target||target.type!=='folder') return;
-  const moving=findNode(dragId,nodes);
-  if(!moving) return;
-  nodes=removeNode(dragId,nodes);
-  nodes=insertInto(targetId,moving,nodes);
-  expanded[targetId]=true; dragId=null;
-  renderTree();
-}
-// Drop on root
-document.getElementById('file-tree').addEventListener('dragover',e=>e.preventDefault());
-document.getElementById('file-tree').addEventListener('drop',function(e){
-  if(e.target!==this&&!e.target.id==='file-tree') return;
-  e.preventDefault();
-  if(!dragId) return;
-  const moving=findNode(dragId,nodes);
-  nodes=removeNode(dragId,nodes);
-  nodes=[...nodes,moving];
-  dragId=null; renderTree();
-});
-
-// ============================================================
-// UPLOAD
-// ============================================================
-document.getElementById('upload-files').addEventListener('change',async function(){
-  for(const file of this.files){
-    const content=await readFile(file);
-    nodes=[...nodes,{id:uid(),name:file.name,type:'file',content}];
-  }
-  this.value=''; renderTree();
-});
-document.getElementById('upload-folder').addEventListener('change',async function(){
-  const files=Array.from(this.files);
-  if(!files.length) return;
-  const root={};
-  for(const file of files){
-    const parts=(file.webkitRelativePath||file.name).split('/');
-    const content=await readFile(file);
-    let cur=root;
-    for(let i=0;i<parts.length-1;i++){
-      if(!cur[parts[i]]) cur[parts[i]]={__dir:true,__ch:{}};
-      cur=cur[parts[i]].__ch;
-    }
-    cur[parts[parts.length-1]]={__file:true,name:parts[parts.length-1],content};
-  }
-  function buildNodes(obj,name){
-    if(obj.__file) return {id:uid(),name:obj.name,type:'file',content:obj.content};
-    const children=Object.entries(obj.__dir?obj.__ch:obj).filter(([k])=>k!=='__dir'&&k!=='__ch').map(([k,v])=>buildNodes(v,k));
-    return {id:uid(),name,type:'folder',children};
-  }
-  const topKey=Object.keys(root)[0]||'uploaded';
-  nodes=[...nodes,buildNodes(root[topKey]?{...root[topKey]}:root,topKey)];
-  this.value=''; renderTree();
-});
-async function readFile(file){
-  return new Promise(res=>{
-    const isImg=/\.(png|jpg|jpeg|gif|webp|svg|ico)$/i.test(file.name);
-    const r=new FileReader();
-    if(isImg){r.onload=e=>res(e.target.result);r.readAsDataURL(file);}
-    else{r.onload=e=>res(e.target.result);r.readAsText(file);}
-  });
-}
-
-// ============================================================
-// DOWNLOAD
-// ============================================================
-function downloadNode(id) {
-  const n=findNode(id,nodes);
-  if(!n) return;
-  if(n.type==='file'){
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([n.content||'']));
-    a.download=n.name; a.click();
-  } else {
-    const files=getNodeFiles(n);
-    zipAndDownload(files,n.name+'.zip');
-  }
-}
-function exportZip(){
-  const files=getAllFiles(nodes);
-  zipAndDownload(files,'project.zip');
-}
-async function zipAndDownload(files,name){
-  const zip=new JSZip();
-  files.forEach(f=>zip.file(f.path,f.content));
-  const blob=await zip.generateAsync({type:'blob'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=name; a.click();
-}
-
-// ============================================================
-// PREVIEW
-// ============================================================
-function escRe(s){var sp='\^$.|?*+()[]{}',r='';for(var i=0;i<s.length;i++){r+=sp.indexOf(s[i])>=0?'\\'+s[i]:s[i];}return r;}
-let previewTimer=null;
-function refreshPreview(){
-  clearTimeout(previewTimer);
-  previewTimer=setTimeout(()=>{
-    const allFiles=getAllFiles(nodes);
-    const htmlFile=allFiles.find(f=>f.path==='index.html')||allFiles.find(f=>f.path.endsWith('.html'));
-    if(!htmlFile){
-      document.getElementById('preview-frame').srcdoc='<body style="font-family:sans-serif;padding:2rem;color:#888"><h2>No index.html</h2><p>Create an <code>index.html</code> to preview.</p></body>';
-      return;
-    }
-    let html=htmlFile.content;
-    allFiles.filter(f=>f.path.endsWith('.css')).forEach(f=>{
-      html=html.replace(new RegExp('<link[^>]*href=["']'+escRe(f.path)+'["'][^>]*/?>','gi'),'<style>'+f.content+'</style>');
-    });
-    allFiles.filter(f=>f.path.endsWith('.js')).forEach(f=>{
-      html=html.replace(new RegExp('<script[^>]*src=["']'+escRe(f.path)+'["'][^>]*></script>','gi'),'<script>'+f.content+'</script>');
-    });
-    document.getElementById('preview-frame').srcdoc=html;
-  },300);
-}
-
-// ============================================================
-// LAYOUT TOGGLES
-// ============================================================
-function toggleSidebar(){
-  const sb=document.getElementById('sidebar');
-  sb.classList.toggle('hidden');
-  document.getElementById('btn-sidebar').classList.toggle('active',!sb.classList.contains('hidden'));
-}
-function togglePreview(){
-  const pp=document.getElementById('preview-pane');
-  pp.classList.toggle('hidden');
-  document.getElementById('btn-preview').classList.toggle('active',!pp.classList.contains('hidden'));
-}
-function openFullPreview(){
-  const allFiles=getAllFiles(nodes);
-  const htmlFile=allFiles.find(f=>f.path==='index.html')||allFiles.find(f=>f.path.endsWith('.html'));
-  let html=htmlFile?htmlFile.content:'<body style="font-family:sans-serif;padding:2rem;color:#888"><h2>No index.html found</h2></body>';
-  if(htmlFile){
-    allFiles.filter(f=>f.path.endsWith('.css')).forEach(f=>{
-      html=html.replace(new RegExp('<link[^>]*href=["']'+escRe(f.path)+'["'][^>]*/?>','gi'),'<style>'+f.content+'</style>');
-    });
-    allFiles.filter(f=>f.path.endsWith('.js')).forEach(f=>{
-      html=html.replace(new RegExp('<script[^>]*src=["']'+escRe(f.path)+'["'][^>]*></script>','gi'),'<script>'+f.content+'</script>');
-    });
-  }
-  document.getElementById('full-preview-frame').srcdoc=html;
-  document.getElementById('full-preview').classList.add('show');
-}
-function closeFullPreview(){ document.getElementById('full-preview').classList.remove('show'); }
-
-// ============================================================
-// INIT
-// ============================================================
-document.getElementById('btn-sidebar').classList.add('active');
-document.getElementById('btn-preview').classList.add('active');
-renderTree();
-openFile('f1');
-</script>
 <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBwGadejXPfbuOvOw3ZedczvlLw7dkqOMg",
-    authDomain: "mystudio-5200e.firebaseapp.com",
-    projectId: "mystudio-5200e",
-    storageBucket: "mystudio-5200e.firebasestorage.app",
-    messagingSenderId: "564346253919",
-    appId: "1:564346253919:web:b2591a99f8816ee2a761ea",
-    measurementId: "G-BWHS1NK8QH"
-  };
+    const firebaseConfig = {
+        apiKey: "AIzaSyBwGadejXPfbuOvOw3ZedczvlLw7dkqOMg",
+        authDomain: "mystudio-5200e.firebaseapp.com",
+        projectId: "mystudio-5200e",
+        storageBucket: "mystudio-5200e.firebasestorage.app",
+        messagingSenderId: "564346253919",
+        appId: "1:564346253919:web:b2591a99f8816ee2a761ea"
+    };
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    // UI Elements
+    const loginScreen = document.getElementById('login-screen');
+    const dashboard = document.getElementById('dashboard');
+    const projectList = document.getElementById('project-list');
+
+    // Handle Auth
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            loginScreen.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+            loadProjects(user.uid);
+        } else {
+            loginScreen.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('btn-login').onclick = () => signInWithPopup(auth, provider);
+    document.getElementById('btn-logout').onclick = () => signOut(auth);
+
+    // Create Project
+    window.createNewProject = async () => {
+        const name = prompt("Project Name:", "New Site");
+        if (!name) return;
+
+        const docRef = await addDoc(collection(db, "projects"), {
+            name: name,
+            owner: auth.currentUser.uid,
+            createdAt: serverTimestamp(),
+            files: [
+                { id: 'f1', name: 'index.html', type: 'file', content: '<h1>New Project</h1>' }
+            ]
+        });
+        window.location.href = `editor.html?id=${docRef.id}`;
+    };
+
+    // Load Projects
+    async function loadProjects(uid) {
+        projectList.innerHTML = '';
+        const q = query(collection(db, "projects"), where("owner", "==", uid));
+        const querySnapshot = await getDocs(q);
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const card = document.createElement('a');
+            card.className = 'project-card';
+            card.href = `editor.html?id=${doc.id}`;
+            card.innerHTML = `<h3>${data.name}</h3><p style="font-size:12px; color:gray;">Click to edit</p>`;
+            projectList.appendChild(card);
+        });
+    }
 </script>
 </body>
 </html>
